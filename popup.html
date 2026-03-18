@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      width: 320px;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+      color: #1c1917;
+      transition: background 0.3s, color 0.3s;
+    }
+    
+    /* Dark mode styles */
+    body.dark-mode {
+      background: linear-gradient(135deg, #1c1917 0%, #292524 100%);
+      color: #fafaf9;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .header h1 {
+      font-size: 24px;
+      color: #ea580c;
+      margin-bottom: 4px;
+    }
+    
+    .header h1 .kanji {
+      font-size: 18px;
+      opacity: 0.85;
+    }
+    
+    .header p {
+      font-size: 11px;
+      color: #9a3412;
+    }
+    
+	.header-subtitle {
+	  color: #9a3412;
+	}
+	
+    body.dark-mode .header-subtitle {
+      color: #fdba74;
+    }
+    
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+    
+	.header-content h1 {
+	  color: #ea580c;
+	}
+	
+    .header-content {
+      text-align: left;
+    }
+    
+	body.dark-mode .header-content h1 {
+	  color: #fb923c;
+	}
+	
+    .dark-mode-toggle {
+      background: #f5f5f4;
+      border: 1px solid #e7e5e4;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .dark-mode-toggle:hover {
+      background: #e7e5e4;
+    }
+    
+    body.dark-mode .dark-mode-toggle {
+      background: #44403c;
+      border-color: #57534e;
+      color: #fafaf9;
+    }
+    
+    body.dark-mode .dark-mode-toggle:hover {
+      background: #57534e;
+    }
+    
+    .btn-dashboard {
+      display: block;
+      width: 100%;
+      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+      border: none;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 16px;
+    }
+    
+    .btn-dashboard:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+    }
+    
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(234, 88, 12, 0.08);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    
+    body.dark-mode .card {
+      background: #292524;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .tracking-toggle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .tracking-info {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .tracking-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1c1917;
+    }
+    
+    body.dark-mode .tracking-label {
+      color: #fafaf9;
+    }
+    
+    .tracking-status {
+      font-size: 11px;
+      color: #9a3412;
+    }
+    
+    body.dark-mode .tracking-status {
+      color: #fdba74;
+    }
+    
+    .btn-toggle {
+      background: #22c55e;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-toggle:hover {
+      filter: brightness(1.05);
+      transform: scale(1.02);
+    }
+    
+    .btn-toggle.stopped {
+      background: #ef4444;
+    }
+    
+    .status-card {
+      border-left: 4px solid transparent;
+    }
+    
+    .status-card.active {
+      border-left-color: #22c55e;
+      background: linear-gradient(135deg, #f0fdf4 0%, white 100%);
+    }
+    
+    body.dark-mode .status-card.active {
+      background: linear-gradient(135deg, #14532d 0%, #292524 100%);
+    }
+    
+    .status-card.inactive {
+      border-left-color: #d1d5db;
+      background: white;
+    }
+    
+    body.dark-mode .status-card.inactive {
+      border-left-color: #57534e;
+      background: #292524;
+    }
+    
+    .status-card.wrong-lang {
+      border-left-color: #f59e0b;
+      background: linear-gradient(135deg, #fffbeb 0%, white 100%);
+    }
+    
+    body.dark-mode .status-card.wrong-lang {
+      background: linear-gradient(135deg, #78350f 0%, #292524 100%);
+    }
+    
+    .status-card.paused {
+      border-left-color: #ef4444;
+      background: linear-gradient(135deg, #fef2f2 0%, white 100%);
+    }
+    
+    body.dark-mode .status-card.paused {
+      background: linear-gradient(135deg, #7f1d1d 0%, #292524 100%);
+    }
+    
+    .status-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1c1917;
+      margin-bottom: 4px;
+    }
+    
+    body.dark-mode .status-text {
+      color: #fafaf9;
+    }
+    
+    .status-subtext {
+      font-size: 11px;
+      color: #78716c;
+    }
+    
+    body.dark-mode .status-subtext {
+      color: #a8a29e;
+    }
+    
+    .status-subtext:empty {
+      display: none;
+    }
+    
+    .btn-force {
+      margin-top: 10px;
+      background: #f5f5f4;
+      border: 1px solid #e7e5e4;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #57534e;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-force:hover {
+      background: #e7e5e4;
+    }
+    
+    body.dark-mode .btn-force {
+      background: #44403c;
+      border-color: #57534e;
+      color: #d6d3d1;
+    }
+    
+    body.dark-mode .btn-force:hover {
+      background: #57534e;
+    }
+    
+    .btn-force.forced {
+      background: #fef3c7;
+      border-color: #fcd34d;
+      color: #92400e;
+    }
+    
+    body.dark-mode .btn-force.forced {
+      background: #78350f;
+      border-color: #b45309;
+      color: #fcd34d;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    
+    .stat-box {
+      background: white;
+      border-radius: 10px;
+      padding: 12px 8px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(234, 88, 12, 0.08);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    
+    body.dark-mode .stat-box {
+      background: #292524;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .stat-value {
+      font-size: 16px;
+      font-weight: 700;
+      color: #ea580c;
+      margin-bottom: 2px;
+    }
+    
+    .stat-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #9a3412;
+    }
+    
+    body.dark-mode .stat-label {
+      color: #fdba74;
+    }
+    
+    .footer {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid #fed7aa;
+      text-align: center;
+      font-size: 10px;
+      color: #9a3412;
+    }
+    
+    body.dark-mode .footer {
+      border-top-color: #44403c;
+      color: #a8a29e;
+    }
+    
+    .footer a {
+      color: #ea580c;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="header-row">
+    <div class="header-content">
+      <h1 style="font-size: 24px; margin-bottom: 4px;">🍊 Mikan <span class="kanji" style="font-size: 18px; opacity: 0.85;">見間</span></h1>
+      <p style="font-size: 11px;" class="header-subtitle">Japanese Immersion Time Tracker</p>
+    </div>
+    <button class="dark-mode-toggle" id="dark-mode-btn" title="Toggle dark mode">🌙</button>
+  </div>
+
+  <button class="btn-dashboard" id="dashboard-btn">
+    📊 Open Dashboard
+  </button>
+
+  <div class="card status-card inactive" id="status-card">
+    <div class="status-text" id="status-text">Checking...</div>
+    <div class="status-subtext" id="status-subtext"></div>
+    <button class="btn-force" id="force-btn" style="display: none;">Force Japanese</button>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-box">
+      <div class="stat-value" id="today-time">0:00</div>
+      <div class="stat-label">Today</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="week-time">0:00</div>
+      <div class="stat-label">This Week</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="month-time">0:00</div>
+      <div class="stat-label">This Month</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Created by <a href="https://www.youtube.com/JouzuJuls" target="_blank" rel="noopener">Jouzu Juls</a> · <a href="https://ko-fi.com/jouzujuls" target="_blank" rel="noopener">☕ Support on Ko-fi</a> · © 2026
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
