@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mikan 見間 - Japanese Immersion Tracker",
-  "version": "1.1",
+  "version": "1.1.1",
   "description": "Track your Japanese video watch time on YouTube",
   "browser_specific_settings": {
     "gecko": {
@@ -30,7 +30,7 @@
     {
       "matches": ["*://www.youtube.com/*"],
       "js": ["content.js"],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [{

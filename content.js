@@ -13,6 +13,7 @@ const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
   let pendingDetectionVideoId = null;
   let interceptedVideoData = {};
   let lastRealTime = 0;  // Add this at the top with other variables
+  let detectionCache = {}; // videoId -> boolean (isJapanese)
 
   const TARGET_LANGUAGE = 'ja';
 
@@ -89,91 +90,6 @@ const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
     return true;
   }
 
-	function detectLanguage(videoId) {
-	  console.log(`Mikan: === Detection Start for ${videoId} ===`);
-	  
-	  let title = '';
-	  let channelName = '';
-	  let captionLanguages = [];
-	  let hasJapaneseCaptions = false;
-
-	  // Use intercepted data as primary source
-	  if (interceptedVideoData[videoId]) {
-		const data = interceptedVideoData[videoId];
-		title = data.title;
-		channelName = data.channelName;
-		captionLanguages = data.captionLanguages;
-		hasJapaneseCaptions = captionLanguages.includes('ja');
-		
-		console.log(`Mikan: Using intercepted data`);
-		console.log(`Mikan: Title: "${title}"`);
-		console.log(`Mikan: Channel: "${channelName}"`);
-		console.log(`Mikan: Captions: [${captionLanguages.join(', ')}]`);
-	  } else {
-		console.log(`Mikan: No intercepted data available, falling back to DOM`);
-		const isShorts = window.location.pathname.includes('/shorts');
-		
-		if (isShorts) {
-		  title = document.title.replace(' - YouTube', '').trim();
-		  const activeReel = document.querySelector('ytd-reel-video-renderer[is-active]');
-		  if (activeReel) {
-			const channelEl = activeReel.querySelector('a.yt-core-attributed-string__link[href*="/@"]');
-			channelName = channelEl?.textContent?.trim() || '';
-		  }
-		} else {
-		  const titleElement = document.querySelector('h1.ytd-watch-metadata yt-formatted-string');
-		  title = titleElement?.textContent?.trim() || document.title.replace(' - YouTube', '').trim();
-		  const channelElement = document.querySelector('#channel-name yt-formatted-string a');
-		  channelName = channelElement?.textContent?.trim() || '';
-		}
-		
-		console.log(`Mikan: Title from DOM: "${title}"`);
-		console.log(`Mikan: Channel from DOM: "${channelName}"`);
-	  }
-
-	  // Analyze Japanese content
-	  const japaneseRegex = /[\u3040-\u309F\u30A0-\u30FF]/;
-	  const hiraganaKatakana = (title.match(/[\u3040-\u309F\u30A0-\u30FF]/g) || []).length;
-	  const kanji = (title.match(/[\u4E00-\u9FAF]/g) || []).length;
-	  const totalJapanese = hiraganaKatakana + kanji;
-	  const titleLength = title.length;
-	  
-	  const hasKana = hiraganaKatakana > 0;
-	  const japaneseRatio = titleLength > 0 ? totalJapanese / titleLength : 0;
-	  const channelHasKana = japaneseRegex.test(channelName);
-
-	  let isJapanese = false;
-	  let reason = '';
-
-	  // Japanese captions = definitely Japanese
-	  if (hasJapaneseCaptions) {
-		isJapanese = true;
-		reason = `Japanese captions found [${captionLanguages.join(', ')}]`;
-	  }
-	  // No Japanese captions (or no captions at all) = use heuristics
-	  else if (hasKana && japaneseRatio > 0.3) {
-		isJapanese = true;
-		reason = `Heuristics: Has kana + ${(japaneseRatio * 100).toFixed(0)}% Japanese chars (>30% threshold)`;
-	  } else if (channelHasKana && japaneseRatio > 0.1) {
-		isJapanese = true;
-		reason = `Heuristics: Channel has kana + ${(japaneseRatio * 100).toFixed(0)}% Japanese chars (>10% threshold)`;
-	  } else {
-		isJapanese = false;
-		reason = `Heuristics: ${(japaneseRatio * 100).toFixed(0)}% Japanese chars, hasKana=${hasKana}, channelHasKana=${channelHasKana}`;
-	  }
-
-	  console.log(`Mikan: --- Detection Summary ---`);
-	  console.log(`Mikan: Title: "${title}"`);
-	  console.log(`Mikan: Channel: "${channelName}"`);
-	  console.log(`Mikan: Captions: ${captionLanguages.length > 0 ? `[${captionLanguages.join(', ')}]` : 'none found'}`);
-	  console.log(`Mikan: Japanese chars: ${totalJapanese}/${titleLength} (${(japaneseRatio * 100).toFixed(0)}%) - Kana: ${hiraganaKatakana}, Kanji: ${kanji}`);
-	  console.log(`Mikan: Result: ${isJapanese ? 'JAPANESE' : 'NOT JAPANESE'}`);
-	  console.log(`Mikan: Reason: ${reason}`);
-	  console.log(`Mikan: === Detection End ===`);
-	  
-	  return isJapanese;
-	}
-
   function isAdPlaying() {
     return !!(
       document.querySelector('.ad-showing') ||
@@ -188,6 +104,100 @@ const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  function detectLanguage(videoId) {
+    // Check cache first - if we already detected this video, return cached result
+    if (detectionCache.hasOwnProperty(videoId)) {
+      console.log(`Mikan: Using cached result for ${videoId}: ${detectionCache[videoId] ? 'JAPANESE' : 'NOT JAPANESE'}`);
+      return detectionCache[videoId];
+    }
+
+    console.log(`Mikan: === Detection Start for ${videoId} ===`);
+    
+    let title = '';
+    let channelName = '';
+    let captionLanguages = [];
+    let hasJapaneseCaptions = false;
+
+    // Use intercepted data as primary source
+    if (interceptedVideoData[videoId]) {
+      const data = interceptedVideoData[videoId];
+      title = data.title;
+      channelName = data.channelName;
+      captionLanguages = data.captionLanguages;
+      hasJapaneseCaptions = captionLanguages.includes('ja');
+      
+      console.log(`Mikan: Using intercepted data`);
+      console.log(`Mikan: Title: "${title}"`);
+      console.log(`Mikan: Channel: "${channelName}"`);
+      console.log(`Mikan: Captions: [${captionLanguages.join(', ')}]`);
+    } else {
+      console.log(`Mikan: No intercepted data available, falling back to DOM`);
+      const isShorts = window.location.pathname.includes('/shorts');
+      
+      if (isShorts) {
+        title = document.title.replace(' - YouTube', '').trim();
+        const activeReel = document.querySelector('ytd-reel-video-renderer[is-active]');
+        if (activeReel) {
+          const channelEl = activeReel.querySelector('a.yt-core-attributed-string__link[href*="/@"]');
+          channelName = channelEl?.textContent?.trim() || '';
+        }
+      } else {
+        const titleElement = document.querySelector('h1.ytd-watch-metadata yt-formatted-string');
+        title = titleElement?.textContent?.trim() || document.title.replace(' - YouTube', '').trim();
+        const channelElement = document.querySelector('#channel-name yt-formatted-string a');
+        channelName = channelElement?.textContent?.trim() || '';
+      }
+      
+      console.log(`Mikan: Title from DOM: "${title}"`);
+      console.log(`Mikan: Channel from DOM: "${channelName}"`);
+    }
+
+    // Analyze Japanese content
+    const japaneseRegex = /[\u3040-\u309F\u30A0-\u30FF]/;
+    const hiraganaKatakana = (title.match(/[\u3040-\u309F\u30A0-\u30FF]/g) || []).length;
+    const kanji = (title.match(/[\u4E00-\u9FAF]/g) || []).length;
+    const totalJapanese = hiraganaKatakana + kanji;
+    const titleLength = title.length;
+    
+    const hasKana = hiraganaKatakana > 0;
+    const japaneseRatio = titleLength > 0 ? totalJapanese / titleLength : 0;
+    const channelHasKana = japaneseRegex.test(channelName);
+
+    let isJapanese = false;
+    let reason = '';
+
+    // Japanese captions = definitely Japanese
+    if (hasJapaneseCaptions) {
+      isJapanese = true;
+      reason = `Japanese captions found [${captionLanguages.join(', ')}]`;
+    }
+    // No Japanese captions (or no captions at all) = use heuristics
+    else if (hasKana && japaneseRatio > 0.3) {
+      isJapanese = true;
+      reason = `Heuristics: Has kana + ${(japaneseRatio * 100).toFixed(0)}% Japanese chars (>30% threshold)`;
+    } else if (channelHasKana && japaneseRatio > 0.1) {
+      isJapanese = true;
+      reason = `Heuristics: Channel has kana + ${(japaneseRatio * 100).toFixed(0)}% Japanese chars (>10% threshold)`;
+    } else {
+      isJapanese = false;
+      reason = `Heuristics: ${(japaneseRatio * 100).toFixed(0)}% Japanese chars, hasKana=${hasKana}, channelHasKana=${channelHasKana}`;
+    }
+
+    console.log(`Mikan: --- Detection Summary ---`);
+    console.log(`Mikan: Title: "${title}"`);
+    console.log(`Mikan: Channel: "${channelName}"`);
+    console.log(`Mikan: Captions: ${captionLanguages.length > 0 ? `[${captionLanguages.join(', ')}]` : 'none found'}`);
+    console.log(`Mikan: Japanese chars: ${totalJapanese}/${titleLength} (${(japaneseRatio * 100).toFixed(0)}%) - Kana: ${hiraganaKatakana}, Kanji: ${kanji}`);
+    console.log(`Mikan: Result: ${isJapanese ? 'JAPANESE' : 'NOT JAPANESE'}`);
+    console.log(`Mikan: Reason: ${reason}`);
+    console.log(`Mikan: === Detection End ===`);
+    
+    // Cache the result before returning
+    detectionCache[videoId] = isJapanese;
+    
+    return isJapanese;
   }
 
   function saveProgress() {
@@ -343,8 +353,19 @@ const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
   }
 
   function resetForNewVideo(newVideoId) {
+    // Don't reset if it's the same video
+    if (currentVideoId === newVideoId) {
+      console.log(`Mikan: resetForNewVideo called for same video ${newVideoId}, skipping`);
+      return;
+    }
+
     if (currentVideoId && totalWatchedSeconds > 0) {
       saveProgress();
+    }
+    
+    // Clear detection cache for the old video
+    if (currentVideoId) {
+      delete detectionCache[currentVideoId];
     }
     
     console.log(`Mikan: New video detected: ${newVideoId}`);
@@ -414,6 +435,8 @@ const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
       console.log('Mikan: No video ID found');
       return;
     }
+
+    console.log(`Mikan: initializeTracker called. newVideoId=${newVideoId}, currentVideoId=${currentVideoId}`);
 
     if (newVideoId !== currentVideoId) {
       resetForNewVideo(newVideoId);
