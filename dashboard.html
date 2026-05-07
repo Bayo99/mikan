@@ -121,6 +121,7 @@
       box-shadow: 0 4px 20px rgba(234, 88, 12, 0.08);
       text-align: center;
       transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
+      cursor: default;
     }
     
     .stat-card:hover {
@@ -278,15 +279,63 @@
       z-index: 1000;
       display: none;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      border: 1px solid #fb923c;
+      min-width: 170px;
     }
     
     .tooltip-date {
       font-weight: 600;
-      margin-bottom: 2px;
+      margin-bottom: 6px;
+      color: #fdba74;
     }
     
     .tooltip-value {
       opacity: 0.9;
+    }
+
+    .tooltip-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      line-height: 1.5;
+      white-space: nowrap;
+    }
+
+    .tooltip-row.total {
+      border-bottom: 1px solid rgba(251, 146, 60, 0.35);
+      margin-bottom: 4px;
+      padding-bottom: 4px;
+      font-weight: 600;
+    }
+
+    .tooltip-source {
+      color: #fed7aa;
+    }
+
+    .tooltip-time {
+      color: #fff7ed;
+      font-weight: 600;
+    }
+
+    #ch-tooltip {
+      background: #1c1917 !important;
+      color: white !important;
+      border: 1px solid #fb923c;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      padding: 8px 12px;
+      text-align: left;
+      min-width: 170px;
+    }
+
+    #ch-tooltip-arrow,
+    #ch-tooltip-arrow:before {
+      background: #1c1917 !important;
+    }
+
+    body.dark-mode #ch-tooltip {
+      background: #1c1917 !important;
+      color: white !important;
     }
     
     .charts-grid {
@@ -571,27 +620,27 @@
     </div>
     
     <div class="stats-grid">
-      <div class="stat-card">
+      <div class="stat-card" data-stat-period="today">
         <div class="stat-value" id="today-stat">0:00</div>
         <div class="stat-label">Today</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" data-stat-period="week">
         <div class="stat-value" id="week-stat">0:00</div>
         <div class="stat-label">This Week</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" data-stat-period="month">
         <div class="stat-value" id="month-stat">0:00</div>
         <div class="stat-label">This Month</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" data-stat-period="total">
         <div class="stat-value" id="total-stat">0:00</div>
         <div class="stat-label">All Time</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" data-stat-period="dailyAvg">
         <div class="stat-value" id="daily-avg-stat">0:00</div>
         <div class="stat-label">Daily Average</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" data-stat-period="monthlyAvg">
         <div class="stat-value" id="monthly-avg-stat">0:00</div>
         <div class="stat-label">Monthly Average</div>
       </div>

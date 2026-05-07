@@ -4,6 +4,15 @@ let darkModeEnabled = false;
 
 const isExtension = typeof browserAPI !== 'undefined' && browserAPI.storage && browserAPI.storage.local;
 
+const STAT_LABELS = {
+  today: 'Today',
+  week: 'This Week',
+  month: 'This Month',
+  total: 'All Time',
+  dailyAvg: 'Daily Average',
+  monthlyAvg: 'Monthly Average'
+};
+
 function formatTime(seconds) {
   seconds = Math.floor(seconds);
   const hours = Math.floor(seconds / 3600);
@@ -57,6 +66,99 @@ function getWeekStart() {
 function getMonthStart() {
   const now = new Date();
   return getDateString(new Date(now.getFullYear(), now.getMonth(), 1));
+}
+
+function getPlatformBreakdown(dayData) {
+  const breakdown = {
+    youtube: 0,
+    netflix: 0
+  };
+  
+  if (!dayData) {
+    return breakdown;
+  }
+  
+  const videos = dayData.videos || {};
+  for (const videoId in videos) {
+    const seconds = videos[videoId] || 0;
+    if (videoId.startsWith('netflix-')) {
+      breakdown.netflix += seconds;
+    } else {
+      breakdown.youtube += seconds;
+    }
+  }
+  
+  const totalSeconds = dayData.totalSeconds || 0;
+  const videoSeconds = breakdown.youtube + breakdown.netflix;
+  const remainder = Math.max(totalSeconds - videoSeconds, 0);
+  
+  // Older records without per-video details came from YouTube-only tracking.
+  breakdown.youtube += remainder;
+  
+  return breakdown;
+}
+
+function addBreakdown(target, source) {
+  target.youtube += source.youtube;
+  target.netflix += source.netflix;
+}
+
+function divideBreakdown(breakdown, divisor) {
+  if (divisor <= 0) {
+    return { youtube: 0, netflix: 0 };
+  }
+  
+  return {
+    youtube: breakdown.youtube / divisor,
+    netflix: breakdown.netflix / divisor
+  };
+}
+
+function getStatsBreakdowns() {
+  const today = getDateString(new Date());
+  const weekStart = getWeekStart();
+  const monthStart = getMonthStart();
+  
+  const breakdowns = {
+    today: { youtube: 0, netflix: 0 },
+    week: { youtube: 0, netflix: 0 },
+    month: { youtube: 0, netflix: 0 },
+    total: { youtube: 0, netflix: 0 },
+    dailyAvg: { youtube: 0, netflix: 0 },
+    monthlyAvg: { youtube: 0, netflix: 0 }
+  };
+  
+  const days = Object.keys(watchData);
+  const daysWithData = days.filter(d => watchData[d] && watchData[d].totalSeconds > 0);
+  const monthsSet = new Set();
+  
+  for (const day of days) {
+    const dayBreakdown = getPlatformBreakdown(watchData[day]);
+    addBreakdown(breakdowns.total, dayBreakdown);
+    
+    if (day === today) {
+      addBreakdown(breakdowns.today, dayBreakdown);
+    }
+    if (day >= weekStart) {
+      addBreakdown(breakdowns.week, dayBreakdown);
+    }
+    if (day >= monthStart) {
+      addBreakdown(breakdowns.month, dayBreakdown);
+    }
+  }
+  
+  for (const day of daysWithData) {
+    monthsSet.add(day.substring(0, 7));
+  }
+  
+  breakdowns.dailyAvg = divideBreakdown(breakdowns.total, daysWithData.length);
+  breakdowns.monthlyAvg = divideBreakdown(breakdowns.total, monthsSet.size);
+  
+  return breakdowns;
+}
+
+function getDayBreakdown(dateStr) {
+  return getPlatformBreakdown(watchData[dateStr]);
 }
 
 function updateDarkModeUI() {
@@ -200,18 +302,77 @@ function buildHeatmap() {
         text: function (date, value, dayjsDate) {
           const dateStr = dayjsDate.format('YYYY-MM-DD');
           const seconds = value || 0;
-          const formatted = formatTime(seconds);
-          return `${dayjsDate.format('MMM D, YYYY')}: ${formatted}`;
+          const breakdown = getDayBreakdown(dateStr);
+          return `
+            <div class="tooltip-date">${dayjsDate.format('MMM D, YYYY')}</div>
+            <div class="tooltip-row total">
+              <span class="tooltip-source">Total</span>
+              <span class="tooltip-time">${formatTime(seconds)}</span>
+            </div>
+            <div class="tooltip-row">
+              <span class="tooltip-source">YouTube</span>
+              <span class="tooltip-time">${formatTime(breakdown.youtube)}</span>
+            </div>
+            <div class="tooltip-row">
+              <span class="tooltip-source">Netflix</span>
+              <span class="tooltip-time">${formatTime(breakdown.netflix)}</span>
+            </div>
+          `;
         }
       }
     ]
   ]);
 }
 
+function renderTooltipContent(title, totalSeconds, breakdown, showTotal = true) {
+  const tooltip = document.getElementById('tooltip');
+  const totalRow = showTotal ? `
+    <div class="tooltip-row total">
+      <span class="tooltip-source">Total</span>
+      <span class="tooltip-time">${formatTime(totalSeconds)}</span>
+    </div>
+  ` : '';
+  
+  tooltip.innerHTML = `
+    <div class="tooltip-date">${title}</div>
+    ${totalRow}
+    <div class="tooltip-row">
+      <span class="tooltip-source">YouTube</span>
+      <span class="tooltip-time">${formatTime(breakdown.youtube)}</span>
+    </div>
+    <div class="tooltip-row">
+      <span class="tooltip-source">Netflix</span>
+      <span class="tooltip-time">${formatTime(breakdown.netflix)}</span>
+    </div>
+  `;
+}
+
+function positionTooltip(target) {
+  const tooltip = document.getElementById('tooltip');
+  const rect = target.getBoundingClientRect();
+  const left = rect.left + rect.width / 2 - tooltip.offsetWidth / 2;
+  const top = rect.top - tooltip.offsetHeight - 8;
+  
+  tooltip.style.left = `${Math.max(8, left)}px`;
+  tooltip.style.top = `${Math.max(8, top)}px`;
+}
+
+function showStatTooltip(e) {
+  const period = e.currentTarget.dataset.statPeriod;
+  const breakdowns = getStatsBreakdowns();
+  const breakdown = breakdowns[period] || { youtube: 0, netflix: 0 };
+  const tooltip = document.getElementById('tooltip');
+  
+  renderTooltipContent(STAT_LABELS[period] || 'Watch Time', 0, breakdown, false);
+  tooltip.style.display = 'block';
+  positionTooltip(e.currentTarget);
+}
+
 function showTooltip(e) {
   const tooltip = document.getElementById('tooltip');
   const dateStr = e.target.dataset.date;
   const seconds = parseInt(e.target.dataset.seconds) || 0;
+  const breakdown = getDayBreakdown(dateStr);
   
   const date = new Date(dateStr + 'T00:00:00');
   const formattedDate = date.toLocaleDateString('en-US', { 
@@ -221,16 +382,9 @@ function showTooltip(e) {
     year: 'numeric'
   });
   
-  tooltip.querySelector('.tooltip-date').textContent = formattedDate;
-  tooltip.querySelector('.tooltip-value').textContent = seconds > 0 
-    ? formatTimeVerbose(seconds) + ' watched'
-    : 'No activity';
-  
+  renderTooltipContent(formattedDate, seconds, breakdown);
   tooltip.style.display = 'block';
-  
-  const rect = e.target.getBoundingClientRect();
-  tooltip.style.left = `${rect.left + rect.width / 2 - tooltip.offsetWidth / 2}px`;
-  tooltip.style.top = `${rect.top - tooltip.offsetHeight - 8}px`;
+  positionTooltip(e.target);
 }
 
 function hideTooltip() {
@@ -355,6 +509,13 @@ function buildMonthlyChart() {
 }
 
 function init() {
+  document.querySelectorAll('.stat-card').forEach(card => {
+    card.addEventListener('mouseenter', showStatTooltip);
+    card.addEventListener('mouseleave', hideTooltip);
+    card.addEventListener('focus', showStatTooltip);
+    card.addEventListener('blur', hideTooltip);
+  });
+  
   // Set up dark mode toggle
   document.getElementById('dark-mode-btn').addEventListener('click', () => {
     darkModeEnabled = !darkModeEnabled;
